@@ -1,0 +1,65 @@
+import time
+import pi2go
+import random  # Aggiunto per supportare la scelta casuale
+
+pi2go.init()
+
+# Configurazioni per il sensore a ultrasuoni e IR
+speed_forward = 60
+speed_turn = 40  # Velocità di rotazione più bassa per controlli più fini
+safe_distance_ultrasonic = 30
+loop_delay = 0.1
+stop_delay = 0.5
+turn_delay = 0.5  # Durata della rotazione ridotta
+
+# Rilevamento versione Pi2Go
+vsn = pi2go.version()
+if vsn == 1:
+    print("Running on Pi2Go")
+else:
+    print("Running on Pi2Go-Lite")
+
+try:
+    while True:
+        distance = pi2go.getDistance()
+        print("Distanza ultrasuoni: {:.1f} cm".format(distance))
+
+        # Controllo sensori IR
+        ir_left = pi2go.irLeft()
+        ir_centre = pi2go.irCentre() if vsn == 1 else False
+        ir_right = pi2go.irRight()
+
+        # Logica di movimento
+        if distance > safe_distance_ultrasonic and ir_left and ir_centre and ir_right:
+            pi2go.forward(speed_forward)
+        else:
+            pi2go.stop()
+            time.sleep(stop_delay)
+            
+            # Determina la direzione di rotazione in base ai sensori IR
+            if ir_left and not ir_right:
+                pi2go.spinRight(speed_turn)
+            elif not ir_left and ir_right:
+                pi2go.spinLeft(speed_turn)
+            elif not ir_left and not ir_right:
+                # Se entrambi i lati sono bloccati, scegli una direzione casuale
+                if random.choice([True, False]):
+                    pi2go.spinRight(speed_turn)
+                else:
+                    pi2go.spinLeft(speed_turn)
+            else:
+                # Se solo il sensore centrale rileva un ostacolo, gira leggermente
+                if random.choice([True, False]):
+                    pi2go.spinRight(speed_turn)
+                else:
+                    pi2go.spinLeft(speed_turn)
+
+            time.sleep(turn_delay)
+
+        time.sleep(loop_delay)
+
+except KeyboardInterrupt:
+    print("Interruzione manuale tramite tastiera.")
+
+finally:
+    pi2go.cleanup()
